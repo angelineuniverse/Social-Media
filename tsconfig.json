@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "outDir": "./dist",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "allowImportingTsExtensions": true,
+    "noImplicitAny": true,
+    "noEmit": true,
+    "baseUrl": "/"
+  },
+  "ts-node": {
+    "esm": true
+  },
+  "include": ["**/*.ts"]
+}
