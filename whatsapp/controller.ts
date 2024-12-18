@@ -86,14 +86,18 @@ class WhatsAppConnection {
             return response.resFailure(500, error);
         }
     }
+    async getAllChats(request?: any,response?: any) {
+        const _listchat: any = await WhatsAppConnection.session.listChats(request?.query);
+        return response.json(_listchat);
+    }
+    async deleteChat(request?: any,response?: any) {
+        const _chat: any = await WhatsAppConnection.session.deleteChat(request?.body.chatId);
+        return response.json(_chat);
+    }
     async onMessage(req: any, response?: any) {
         await WhatsAppConnection.session.onMessage((msg: Message) => {
             response.json(msg); 
         })
-    }
-    async getAllChats(request?: any,response?: any) {
-        const _listchat: any = await WhatsAppConnection.session.listChats(request?.body);
-        return response.json(_listchat);
     }
     async sendMessage(request?: any, response?: any) { 
         const _types = request.body?.types;
@@ -188,9 +192,39 @@ class WhatsAppConnection {
         }
     }
     async getMessages(request?: any, response?: any) {
-        const _allmessage = await WhatsAppConnection.session.getMessages(request?.body?.chatid)
+        const _allmessage = await WhatsAppConnection.session.getMessages(request?.body?.chatid);
+        for await (const element of _allmessage){
+            if (element.hasReaction) {
+                const _reaction = await WhatsAppConnection.session.getReactions(element.id)
+                element['reaction'] = _reaction;
+            }
+        };
         return response.json(_allmessage);
     }
+    async deleteMessage(request?: any, response?: any) {
+        const _deleted = await WhatsAppConnection.session.deleteMessage(request?.body.chatId, request?.body.messageId, request?.body.onlyLocal ?? false, request?.body.deleteMediaInDevice ?? true);
+        return response.json(_deleted)
+    }
+    async getAllUnreadMessages(request?: any, response?: any) {
+        const _unread = await WhatsAppConnection.session.getAllUnreadMessages();
+        return response.json(_unread)
+    }
+    async onReactionMessage(request?: any, response?: any) {
+        await WhatsAppConnection.session.onReactionMessage((reaction: any) => {
+            response.json(reaction)
+        })
+    }
+    async getReactions(request?: any, response?: any) {
+        const _reaction = await WhatsAppConnection.session.getReactions(request?.query.messageId);
+        return response.json(_reaction)
+    }
+    async sendReactionToMessage(request?: any, response?: any) {
+        const _reaction = await WhatsAppConnection.session.sendReactionToMessage(request?.body.id, request?.body?.reaction);
+        return response.json({
+            status: true
+        })
+    }
+    
 
     /** PROFILE CONFIGURATION */
     async getName(request:any, response?: any) {

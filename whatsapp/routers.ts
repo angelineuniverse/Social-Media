@@ -19,10 +19,16 @@ const uploads = multer({
 wa.get('/init', _whatsapp.scanned);
 wa.get('/logout', _whatsapp.logout);
 wa.post('/host', _whatsapp.host);
-wa.get('/onMessage', _whatsapp.onMessage)
 wa.get('/getAllChat', _whatsapp.getAllChats);
+wa.post('/deleteChat', _whatsapp.deleteChat);
+wa.post('/onMessage', _whatsapp.onMessage);
 wa.post('/sendMessage', uploads.array('file',5), _whatsapp.sendMessage);
 wa.post('/getMessage', _whatsapp.getMessages);
+wa.post('/deleteMessage', _whatsapp.deleteMessage);
+wa.get('/onReactionMessage', _whatsapp.onReactionMessage);
+wa.get('/getAllUnreadMessages', _whatsapp.getAllUnreadMessages);
+wa.get('/getReactions', _whatsapp.getReactions);
+wa.post('/sendReactionToMessage', _whatsapp.sendReactionToMessage);
 
 wa.get('/profile/name', _whatsapp.getName);
 wa.post('/profile/name', _whatsapp.setName);
