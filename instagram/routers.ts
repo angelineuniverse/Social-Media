@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-const wa = express.Router();
+const ig = express.Router();
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, './storage/instagram/');

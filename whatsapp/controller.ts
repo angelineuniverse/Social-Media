@@ -1,5 +1,6 @@
 import wppconnect, { Message } from '@wppconnect-team/wppconnect';
 import { resFailure, resSuccess, whiteListImage, whiteListVideo } from '../helper.ts';
+import moment from 'moment';
 
 class WhatsAppConnection {
     static session: any = null;
@@ -35,15 +36,15 @@ class WhatsAppConnection {
                 updatesLog: true, // Logs info updates automatically in terminal
                 autoClose: 10000, // Automatically closes the wppconnect only when scanning the QR code (default 60 seconds, if you want to turn it off, assign 0 or false)
             }).then((res: any) => {
-                response.json({
+                WhatsAppConnection.session = res;
+                return response.json({
                     'isLogged:' : res.isLogged
                 })
-                WhatsAppConnection.session = res;
             }).catch((err) => {
-                console.log(err,"error");
+                return console.log(err,"error");
             })
         } catch (error) {
-            console.log("ERROR : ", error);
+            return console.log("ERROR : ", error);
             
         }
     }
@@ -192,7 +193,7 @@ class WhatsAppConnection {
         }
     }
     async getMessages(request?: any, response?: any) {
-        const _allmessage = await WhatsAppConnection.session.getMessages(request?.body?.chatid);
+        const _allmessage = await WhatsAppConnection.session.getMessages(request?.body?.chatid, request?.query);
         for await (const element of _allmessage){
             if (element.hasReaction) {
                 const _reaction = await WhatsAppConnection.session.getReactions(element.id)
@@ -259,6 +260,10 @@ class WhatsAppConnection {
     /** LABEL */
     async getAllLabel(request: any, response?: any) {
         const _label: any = await WhatsAppConnection.session.getAllLabels();
+        return resSuccess(response, 'Get Label', _label)
+    }
+    async getLabelbyId(request: any, response?: any) {
+        const _label: any = await WhatsAppConnection.session.getLabelById(request?.query?.id);
         return resSuccess(response, 'Get Label', _label)
     }
     async addLabel(request: any, response?: any) {
@@ -334,6 +339,92 @@ class WhatsAppConnection {
             await WhatsAppConnection.session.sendVideoStatus(file.path, { caption: index < 1 ? request?.body?.caption : '' });
         });
         return resSuccess(response, 'Send Status Success', true);
+    }
+
+
+    /** Custom Report Wa by Date for Anisa */
+    async reportMessage(request: any, response?: any) {
+        const _allmessage = await WhatsAppConnection.session.listChats(request?.query);
+        const _label: any = await WhatsAppConnection.session.getAllLabels();
+        if (_allmessage) {
+            var datas: Array<any> = [];
+            
+            
+            // Format ke locale Indonesia
+            const options: Intl.DateTimeFormatOptions = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Jakarta'
+            };
+
+            await _allmessage.forEach(async (element: any) => {
+                const _getmessage = await WhatsAppConnection.session.getMessages(element?.id?._serialized, { count: request?.query?.total_convertation ?? 100 });
+                
+                var filterConvertation: any = null;
+                if (_getmessage.length > 0) {
+                    
+                    _getmessage.forEach((data: any) => {
+                        if (data?.ctwaContext) {
+                            console.log('====================================');
+                            console.log(data?.from);
+                            console.log('====================================');
+                            const senderStart = new Date(data?.t * 1000).toLocaleDateString('id-ID', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour12: false,
+                                timeZone: 'Asia/Jakarta'
+                            });
+                            if (senderStart >= request?.body?.start_date && senderStart <= request?.body?.end_date) {
+                                filterConvertation = data?.ctwaContext
+                            }
+                        }
+                    });
+                    const t = new Date(element.t * 1000).toLocaleDateString('id-ID', options);
+                    const tcTokenTimestamp = new Date(element.tcTokenTimestamp * 1000).toLocaleDateString('id-ID', options);
+                    const tcTokenSenderTimestamp = new Date(element.tcTokenSenderTimestamp * 1000).toLocaleDateString('id-ID', options);
+                    let labelName: string = '';
+                    let name: string = '';
+                    if (element?.contact?.pushname) {
+                        name = await element?.contact?.pushname
+                    }
+                    if (element?.labels?.length > 0) {
+                        if (_label) {
+                            const find = _label.find((item: any) => item.id === element?.labels[0])
+                            labelName = find?.name
+                        }
+                    }
+                    // if(filterConvertation)
+                    datas.push({
+                        "terakhir_convertation": t,
+                        "terakhir_pengirim_send": tcTokenTimestamp,
+                        "terakhir_anda_respond": tcTokenSenderTimestamp,
+                        'contact_pengirim': element?.id?.user,
+                        "nama_pengirim": name,
+                        "label_contact": labelName,
+                        "convert": filterConvertation
+                        
+                    })
+                } else {
+                    console.log('====================================');
+                    console.log("GA DSINI");
+                    console.log('====================================');
+                }
+
+                
+            });
+
+            return response.status(200).json({
+                total_chat: _allmessage.length,
+                data: datas
+            })
+        }
+        return response.status(500).json("failure")
     }
 }
 

@@ -38,6 +38,7 @@ wa.delete('/profile/remove', _whatsapp.removePicture);
 wa.post('/profile/setPicture', uploads.single('file'),_whatsapp.setPicture);
 
 wa.get('/label/all', _whatsapp.getAllLabel);
+wa.get('/label/byid', _whatsapp.getLabelbyId);
 wa.post('/label/add', _whatsapp.addLabel);
 wa.post('/label/onUpdate', _whatsapp.onUpdateLabel);
 wa.post('/label/addOrRemove', _whatsapp.addOrRemoveLabel);
@@ -49,7 +50,9 @@ wa.post('/contact/valid', _whatsapp.getValidContact);
 
 wa.post('/status/imagecaption',uploads.array('file',5),_whatsapp.addImageWithCaption);
 wa.post('/status/text',_whatsapp.addText);
-wa.post('/status/video',uploads.array('file',5),_whatsapp.addVideo);
+wa.post('/status/video', uploads.array('file', 5), _whatsapp.addVideo);
 
+// Customize Get Report Wa for Anisa
+wa.get('/report/date', _whatsapp.reportMessage)
 
 export default wa;
