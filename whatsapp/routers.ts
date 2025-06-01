@@ -20,6 +20,7 @@ wa.get('/init', _whatsapp.scanned);
 wa.get('/logout', _whatsapp.logout);
 wa.post('/host', _whatsapp.host);
 wa.get('/getAllChat', _whatsapp.getAllChats);
+wa.get('/getChatbyId', _whatsapp.getChatbyId);
 wa.post('/deleteChat', _whatsapp.deleteChat);
 wa.post('/onMessage', _whatsapp.onMessage);
 wa.post('/sendMessage', uploads.array('file',5), _whatsapp.sendMessage);

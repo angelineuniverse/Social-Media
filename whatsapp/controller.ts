@@ -91,6 +91,10 @@ class WhatsAppConnection {
         const _listchat: any = await WhatsAppConnection.session.listChats(request?.query);
         return response.json(_listchat);
     }
+    async getChatbyId(request?: any,response?: any) {
+        const _chat: any = await WhatsAppConnection.session.getChatById(request?.query?.contactId);
+        return response.json(_chat);
+    }
     async deleteChat(request?: any,response?: any) {
         const _chat: any = await WhatsAppConnection.session.deleteChat(request?.body.chatId);
         return response.json(_chat);
@@ -347,85 +351,64 @@ class WhatsAppConnection {
         const _allmessage = await WhatsAppConnection.session.listChats(request?.query);
         const _label: any = await WhatsAppConnection.session.getAllLabels();
         if (_allmessage) {
-            var datas: Array<any> = [];
-            
-            
-            // Format ke locale Indonesia
-            const options: Intl.DateTimeFormatOptions = {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-                timeZone: 'Asia/Jakarta'
-            };
+            let datas: Array<any> = [];
 
-            await _allmessage.forEach(async (element: any) => {
-                const _getmessage = await WhatsAppConnection.session.getMessages(element?.id?._serialized, { count: request?.query?.total_convertation ?? 100 });
+            for (const element of _allmessage) {
                 
-                var filterConvertation: any = null;
-                if (_getmessage.length > 0) {
-                    
-                    _getmessage.forEach((data: any) => {
-                        if (data?.ctwaContext) {
-                            console.log('====================================');
-                            console.log(data?.from);
-                            console.log('====================================');
-                            const senderStart = new Date(data?.t * 1000).toLocaleDateString('id-ID', {
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour12: false,
-                                timeZone: 'Asia/Jakarta'
-                            });
-                            if (senderStart >= request?.body?.start_date && senderStart <= request?.body?.end_date) {
-                                filterConvertation = data?.ctwaContext
-                            }
-                        }
-                    });
-                    const t = new Date(element.t * 1000).toLocaleDateString('id-ID', options);
-                    const tcTokenTimestamp = new Date(element.tcTokenTimestamp * 1000).toLocaleDateString('id-ID', options);
-                    const tcTokenSenderTimestamp = new Date(element.tcTokenSenderTimestamp * 1000).toLocaleDateString('id-ID', options);
-                    let labelName: string = '';
-                    let name: string = '';
-                    if (element?.contact?.pushname) {
-                        name = await element?.contact?.pushname
+                let labelName: string = '';
+                let name: string = '';
+                if (element?.contact?.pushname) {
+                    name = await element?.contact?.pushname
+                }
+                if (element?.labels?.length > 0) {
+                    if (_label) {
+                        const find = _label.find((item: any) => item.id === element?.labels[0])
+                        labelName = find?.name
                     }
-                    if (element?.labels?.length > 0) {
-                        if (_label) {
-                            const find = _label.find((item: any) => item.id === element?.labels[0])
-                            labelName = find?.name
-                        }
-                    }
-                    // if(filterConvertation)
+                }
+                let filterConvertation: any = null;
+                if (request?.body?.start_date && request?.body?.end_date) {
+                    const _getmessage = await WhatsAppConnection.session.getMessages(element?.id?._serialized, { count: request?.query?.total_convertation ?? 10 });
+                    filterConvertation = _getmessage.reverse().filter((item: any) => {
+                        const itemDate = moment(element.t, 'X').format('DD/MM/YYYY');
+                        return (
+                            parseDateString(itemDate) >= parseDateString(request?.body?.start_date) && parseDateString(itemDate) <= parseDateString(request?.body?.end_date) && item.ctwaContext != undefined
+                        )
+                    })
+                }
+
+                const t = moment(element.t,'X').format('DD/MM/YYYY H:mm:ss');
+                
+                if (filterConvertation.length > 0 && parseDateString(moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY'))
+                    >= parseDateString(request?.body?.start_date) &&
+                    parseDateString(moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY'))
+                    <= parseDateString(request?.body?.end_date)
+                ) {
                     datas.push({
                         "terakhir_convertation": t,
-                        "terakhir_pengirim_send": tcTokenTimestamp,
-                        "terakhir_anda_respond": tcTokenSenderTimestamp,
+                        "chat_terakhir_cust_sudah_dibalas ?": element?.lastReceivedKey?.fromMe ? 'Ya' : 'Tidak',
                         'contact_pengirim': element?.id?.user,
                         "nama_pengirim": name,
                         "label_contact": labelName,
-                        "convert": filterConvertation
-                        
+                        "convertation_start_when_click_last_template": moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY H:mm:ss'),
+                        "body_last_template": filterConvertation[0].body,
+                        "count_template_click": filterConvertation.length,
                     })
-                } else {
-                    console.log('====================================');
-                    console.log("GA DSINI");
-                    console.log('====================================');
                 }
-
-                
-            });
+            };
 
             return response.status(200).json({
-                total_chat: _allmessage.length,
+                total_chat: datas.length,
                 data: datas
             })
         }
         return response.status(500).json("failure")
     }
+}
+
+function parseDateString(dateStr: string): Date {
+  const [day, month, year] = dateStr.split('/').map(Number);
+  return new Date(year, month - 1, day); // Month dimulai dari 0 (Jan = 0)
 }
 
 export default WhatsAppConnection;
