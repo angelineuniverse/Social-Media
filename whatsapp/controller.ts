@@ -1,7 +1,6 @@
 import wppconnect, { Message } from '@wppconnect-team/wppconnect';
-import { resFailure, resSuccess, whiteListImage, whiteListVideo } from '../helper.ts';
+import { resFailure, resSuccess, whiteListImage, whiteListVideo, parseDateString, exportToCSV, CsvColumn } from '../helper.ts';
 import moment from 'moment';
-
 class WhatsAppConnection {
     static session: any = null;
 
@@ -350,6 +349,7 @@ class WhatsAppConnection {
     async reportMessage(request: any, response?: any) {
         const _allmessage = await WhatsAppConnection.session.listChats(request?.query);
         const _label: any = await WhatsAppConnection.session.getAllLabels();
+        
         if (_allmessage) {
             let datas: Array<any> = [];
 
@@ -386,16 +386,32 @@ class WhatsAppConnection {
                 ) {
                     datas.push({
                         "terakhir_convertation": t,
-                        "chat_terakhir_cust_sudah_dibalas ?": element?.lastReceivedKey?.fromMe ? 'Ya' : 'Tidak',
-                        'contact_pengirim': element?.id?.user,
+                        "chat_terakhir_cust_sudah_dibalas": element?.lastReceivedKey?.fromMe ? 'Ya' : 'Tidak',
+                        'contact': element?.id?.user,
                         "nama_pengirim": name,
                         "label_contact": labelName,
                         "convertation_start_when_click_last_template": moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY H:mm:ss'),
                         "body_last_template": filterConvertation[0].body,
                         "count_template_click": filterConvertation.length,
+                        "date_click_leeds": filterConvertation.map((item: any) => moment(item.t, 'X').format('DD/MM/YYYY H:mm:ss')).join(" - "),
                     })
                 }
             };
+
+            const column: CsvColumn[] = [
+                { key: "terakhir_convertation", title: "TERAKHIR CHATTAN" },
+                { key: "chat_terakhir_cust_sudah_dibalas", title: "CHAT TERAKHIR SUDAH KAMU BALAS" },
+                { key: "contact", title: "CONTACT WA" },
+                { key: "nama_pengirim", title: "NAMA CONTACT" },
+                { key: "label_contact", title: "LABEL CONTACT" },
+                { key: "convertation_start_when_click_last_template", title: "WAKTU CUST MULAI CHAT DI LEEDS TERAKHIR " },
+                { key: "body_last_template", title: "ISI TEMPLATE" },
+                { key: "count_template_click", title: "BANYAK CUST CLICK LEEDS" },
+                { key: "date_click_leeds", title: "CLICK LEEDS" },
+            ]
+            // Export CSV Variable
+            exportToCSV(datas, column ,'exported_data.csv');
+
 
             return response.status(200).json({
                 total_chat: datas.length,
@@ -406,9 +422,7 @@ class WhatsAppConnection {
     }
 }
 
-function parseDateString(dateStr: string): Date {
-  const [day, month, year] = dateStr.split('/').map(Number);
-  return new Date(year, month - 1, day); // Month dimulai dari 0 (Jan = 0)
-}
+
+
 
 export default WhatsAppConnection;
