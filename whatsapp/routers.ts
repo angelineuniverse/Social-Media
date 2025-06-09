@@ -54,6 +54,6 @@ wa.post('/status/text',_whatsapp.addText);
 wa.post('/status/video', uploads.array('file', 5), _whatsapp.addVideo);
 
 // Customize Get Report Wa for Anisa
-wa.get('/report/date', _whatsapp.reportMessage)
+wa.get('/report/date', uploads.array('file',5),_whatsapp.reportMessage)
 
 export default wa;

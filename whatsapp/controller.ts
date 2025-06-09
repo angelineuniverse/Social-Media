@@ -164,7 +164,7 @@ class WhatsAppConnection {
                 case 'image':
                     await request.files.forEach(async (file: any, index: number) => {
                         if (!whiteListImage.includes(file.mimetype)) return resFailure(response, 'Only support send with image type', 500);
-                        await WhatsAppConnection.session.sendImage(_number, file.path, file.filename, index < 1 ? _body : '').then((res: any) => {
+                        await WhatsAppConnection.session.sendImage(`${_number}@c.us`, file.path, file.filename, index < 1 ? _body.replace(/\\n/g, '\n').trim() : '').then((res: any) => {
                             return resSuccess(response, "send image", res);
                         })
                     });
@@ -354,7 +354,6 @@ class WhatsAppConnection {
             let datas: Array<any> = [];
 
             for (const element of _allmessage) {
-                
                 let labelName: string = '';
                 let name: string = '';
                 if (element?.contact?.pushname) {
@@ -372,7 +371,7 @@ class WhatsAppConnection {
                     filterConvertation = _getmessage.reverse().filter((item: any) => {
                         const itemDate = moment(element.t, 'X').format('DD/MM/YYYY');
                         return (
-                            parseDateString(itemDate) >= parseDateString(request?.body?.start_date) && parseDateString(itemDate) <= parseDateString(request?.body?.end_date) && item.ctwaContext != undefined
+                            parseDateString(itemDate) >= parseDateString(request?.body?.start_date) && parseDateString(itemDate) <= parseDateString(request?.body?.end_date) && item.ctwaContext != undefined && item.ctwaContext.title != undefined
                         )
                     })
                 }
@@ -384,33 +383,46 @@ class WhatsAppConnection {
                     parseDateString(moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY'))
                     <= parseDateString(request?.body?.end_date)
                 ) {
-                    datas.push({
-                        "terakhir_convertation": t,
-                        "chat_terakhir_cust_sudah_dibalas": element?.lastReceivedKey?.fromMe ? 'Ya' : 'Tidak',
-                        'contact': element?.id?.user,
-                        "nama_pengirim": name,
-                        "label_contact": labelName,
-                        "convertation_start_when_click_last_template": moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY H:mm:ss'),
-                        "body_last_template": filterConvertation[0].body,
-                        "count_template_click": filterConvertation.length,
-                        "date_click_leeds": filterConvertation.map((item: any) => moment(item.t, 'X').format('DD/MM/YYYY H:mm:ss')).join(" - "),
-                    })
+                    switch (request.body.type) {
+                        case 'broadcast-image':
+                            await this.delay(5000)
+                            await request.files.forEach(async (file: any, index: number) => {
+                                if (!whiteListImage.includes(file.mimetype)) return resFailure(response, 'Only support send with image type', 500);
+                                await WhatsAppConnection.session.sendImage(`${element?.id?.user}@c.us`, file.path, file.filename, index < 1 ? request.body.body.replace(/\\n/g, '\n').trim() : '')
+                            });
+                            break;
+                        default:
+                            datas.push({
+                                "terakhir_convertation": t,
+                                "chat_terakhir_cust_sudah_dibalas": element?.lastReceivedKey?.fromMe ? 'Ya' : 'Tidak',
+                                'contact': element?.id?.user,
+                                "nama_pengirim": name,
+                                "label_contact": labelName,
+                                "convertation_start_when_click_last_template": moment(filterConvertation[0].t, 'X').format('DD/MM/YYYY H:mm:ss'),
+                                "body_last_template": filterConvertation[0].body,
+                                "count_template_click": filterConvertation.length,
+                                "date_click_leeds": filterConvertation.map((item: any) => moment(item.t, 'X').format('DD/MM/YYYY H:mm:ss')).join(" - "),
+                            })
+                            break;
+                    }
                 }
-            };
-
-            const column: CsvColumn[] = [
-                { key: "terakhir_convertation", title: "TERAKHIR CHATTAN" },
-                { key: "chat_terakhir_cust_sudah_dibalas", title: "CHAT TERAKHIR SUDAH KAMU BALAS" },
-                { key: "contact", title: "CONTACT WA" },
-                { key: "nama_pengirim", title: "NAMA CONTACT" },
-                { key: "label_contact", title: "LABEL CONTACT" },
-                { key: "convertation_start_when_click_last_template", title: "WAKTU CUST MULAI CHAT DI LEEDS TERAKHIR " },
-                { key: "body_last_template", title: "ISI TEMPLATE" },
-                { key: "count_template_click", title: "BANYAK CUST CLICK LEEDS" },
-                { key: "date_click_leeds", title: "CLICK LEEDS" },
-            ]
-            // Export CSV Variable
-            exportToCSV(datas, column ,'exported_data.csv');
+            }
+                
+            if (request.body.report) {
+                const column: CsvColumn[] = [
+                    { key: "terakhir_convertation", title: "TERAKHIR CHATTAN" },
+                    { key: "chat_terakhir_cust_sudah_dibalas", title: "CHAT TERAKHIR SUDAH KAMU BALAS" },
+                    { key: "contact", title: "CONTACT WA" },
+                    { key: "nama_pengirim", title: "NAMA CONTACT" },
+                    { key: "label_contact", title: "LABEL CONTACT" },
+                    { key: "convertation_start_when_click_last_template", title: "WAKTU CUST MULAI CHAT DI LEEDS TERAKHIR " },
+                    { key: "body_last_template", title: "ISI TEMPLATE" },
+                    { key: "count_template_click", title: "BANYAK CUST CLICK LEEDS" },
+                    { key: "date_click_leeds", title: "CLICK LEEDS" },
+                ]
+                // Export CSV Variable
+                exportToCSV(datas, column ,'exported_data.csv');
+            }
 
 
             return response.status(200).json({
@@ -419,6 +431,10 @@ class WhatsAppConnection {
             })
         }
         return response.status(500).json("failure")
+    }
+
+    async delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
